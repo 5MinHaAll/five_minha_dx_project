@@ -1,4 +1,9 @@
+import 'dart:core';
+import 'dart:async'; // Timer를 위해 추가
+
+import 'package:five_minha_dx_project/data/generateData.dart';
 import 'package:flutter/material.dart';
+import 'data/saveData.dart';
 import 'useful_features_page.dart'; // 유용한 기능 페이지 import
 
 class FoodProcessorOnPage extends StatefulWidget {
@@ -9,20 +14,80 @@ class FoodProcessorOnPage extends StatefulWidget {
 }
 
 class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
-  // 현재 활성화된 모드 (초기값은 아무 것도 선택되지 않은 상태)
+  // 현재 활성화된 모드
   String? _activeMode;
 
-  // 배양토 상태 초기값
-  String _temperatureStatus = "양호";
-  String _humidityStatus = "주의";
-  String _phStatus = "보통";
+  Map<String, dynamic>? _microbialBedData;
+  Map<String, dynamic>? _mixingTankData;
+  Map<String, dynamic>? _outputTankData;
 
-  // 교반통 상태 초기값 (고정)
-  final String _agitatorTemperatureStatus = "양호";
-  final String _agitatorHumidityStatus = "양호";
+  // RandomDataService 객체
+  final RandomDataService microbial_bed = RandomDataService();    // 배양토
+  final RandomDataService mixing_tank = RandomDataService();      // 교반통
 
-  // 부산물통 용량 상태
-  final String _byproductCapacity = "35%";
+  // 부산물
+  RandomDataService output_tank = RandomDataService();
+
+  // Timer 변수
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startPeriodicUpdates(); // 화면 시작 시 타이머 시작
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // 화면 종료 시 타이머 중지
+    super.dispose();
+  }
+
+  // 일정 시간마다 데이터를 갱신하는 타이머 설정
+  void _startPeriodicUpdates() {
+    _timer = Timer.periodic(const Duration(seconds: 10), (timer) async {
+      try {
+        // 데이터 갱신
+        final microbialData = await microbial_bed.generateMicrobialBedData();
+        final mixingData = await mixing_tank.generateMixingTankData();
+
+        setState(() {
+          _microbialBedData = microbialData;
+          _mixingTankData = mixingData;
+        });
+      } catch (e) {
+        print("Error fetching data: $e");
+      }
+    });
+  }
+
+  // void _fetchMicrobialBedData(BuildContext context) async {
+  //   try {
+  //     final data = await microbial_bed.generateMicrobialBedData();
+  //     setState(() {
+  //       _microbialBedData = data;
+  //     });
+  //     // 데이터를 포함하여 모달 표시
+  //     _showCultivationModal(context,data);
+  //   } catch (e) {
+  //     print("Error fetching data: $e");
+  //   }
+  // }
+
+  // void _fetchMixingTankData(BuildContext context) async {
+  //   try {
+  //     final data = await mixing_tank.generateMixingTankData();
+  //     setState(() {
+  //       _mixingTankData = data;
+  //     });
+  //     // 데이터를 포함하여 모달 표시
+  //     _showAgitatorModal(context,data);
+  //   } catch (e) {
+  //     print("Error fetching data: $e");
+  //   }
+  // }
+
+  FirebaseService firebaseService = FirebaseService();
 
   // 현재 선택된 탭 (0: 제품, 1: 유용한 기능)
   int _selectedIndex = 0;
@@ -47,12 +112,34 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
   // 메인 콘텐츠
   Widget _buildMainContent() {
     // 배양토 상태 계산
-    bool isCultivationNormal = _temperatureStatus == "양호" &&
-        _humidityStatus == "보통" &&
-        _phStatus == "보통";
+    String microbialBedTemperatureStatus =
+        _microbialBedData?['temperatureStatus'] ?? "알 수 없음";
+    String microbialBedHumidityStatus =
+        _microbialBedData?['humidityStatus'] ?? "알 수 없음";
+    String microbialBedPhStatus = _microbialBedData?['phStatus'] ?? "알 수 없음";
 
-    String cultivationStatus = isCultivationNormal ? "정상" : "비정상";
-    Color cultivationColor = isCultivationNormal ? Colors.green : Colors.red;
+    bool microbialBedIsNormal = microbialBedTemperatureStatus == "보통" &&
+        microbialBedHumidityStatus == "보통" &&
+        microbialBedPhStatus == "보통";
+
+    String microbialBedStatus = microbialBedIsNormal ? "정상" : "비정상";
+    Color microbialBedColor = microbialBedIsNormal ? Colors.green : Colors.red;
+
+    // 교반통 상태 계산
+    String mixingTankTemperatureStatus =
+        _mixingTankData?['temperatureStatus'] ?? "알 수 없음";
+    String mixingTankHumidityStatus =
+        _mixingTankData?['humidityStatus'] ?? "알 수 없음";
+
+      bool mixingTankIsNormal = mixingTankTemperatureStatus == "보통" &&
+        mixingTankHumidityStatus == "보통";
+
+    String mixingTankStatus = mixingTankIsNormal ? "정상" : "비정상";
+    Color mixingTankColor = mixingTankIsNormal ? Colors.green : Colors.red;
+
+    // 부산물통 용량 상태
+    final String _byproductCapacity = "35%";
+
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -132,17 +219,18 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              // 랜덤 데이터 생성
               _buildInfoBox(
                 "배양토 상태",
-                cultivationStatus,
-                cultivationColor,
-                    () => _showCultivationModal(context),
+                microbialBedStatus,
+                microbialBedColor,
+                    () => _showCultivationModal(context,_microbialBedData!),  // 데이터를 포함하여 모달 표시
               ),
               _buildInfoBox(
                 "교반통 상태",
-                "정상",
-                Colors.green,
-                    () => _showAgitatorModal(context),
+                mixingTankStatus,
+                mixingTankColor,
+                    () => _showAgitatorModal(context,_mixingTankData!),     // 데이터를 포함하여 모달 표시
               ),
             ],
           ),
@@ -186,7 +274,6 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
       ),
     );
   }
-
 
   // 하단 네비게이션 바
   Widget _buildBottomNavigationBar() {
@@ -278,16 +365,217 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
     );
   }
 
-  // 배양토 상태 모달창
-  void _showCultivationModal(BuildContext context) {
+  // // 배양토 상태 모달창
+  // void _showCultivationModal(BuildContext context,Map<String, dynamic> data) {
+  //   showModalBottomSheet(
+  //     context: context,
+  //     backgroundColor: Colors.white,
+  //     shape: const RoundedRectangleBorder(
+  //       borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
+  //     ),
+  //     builder: (context) {
+  //       return Padding(
+  //         padding: const EdgeInsets.all(16.0),
+  //         child: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             // 제목
+  //             Row(
+  //               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //               children: [
+  //                 const Text(
+  //                   "배양토 상태",
+  //                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+  //                 ),
+  //                 IconButton(
+  //                   onPressed: () => Navigator.of(context).pop(),
+  //                   icon: const Icon(Icons.close),
+  //                 ),
+  //               ],
+  //             ),
+  //             const Divider(),
+  //
+  //             // 모달 내용: 온도, 습도, pH 상태
+  //             Column(
+  //               children: [
+  //                 _buildModalRow(
+  //                   "온도",
+  //                   "${data['temperature']}°C",
+  //                   Icons.mood,
+  //                   data['temperatureStatus'],
+  //                   data['temperatureStatus'] == "보통"
+  //                       ? Colors.green
+  //                       : data['temperatureStatus'] == "높음"
+  //                       ? Colors.red
+  //                       : Colors.lightBlue,
+  //                 ),
+  //                 const SizedBox(height: 16),
+  //                 _buildModalRow(
+  //                   "습도",
+  //                   "${data['humidity']}%",
+  //                   Icons.warning,
+  //                   data['humidityStatus'],
+  //                   data['humidityStatus'] == "보통"
+  //                       ? Colors.green
+  //                       : data['humidityStatus'] == "높음"
+  //                       ? Colors.red
+  //                       : Colors.lightBlue,
+  //                 ),
+  //                 const SizedBox(height: 16),
+  //                 _buildModalRow(
+  //                   "pH",
+  //                   "${data['ph']}",
+  //                   Icons.mood_bad,
+  //                   data['phStatus'],
+  //                   data['phStatus'] == "보통"
+  //                       ? Colors.green
+  //                       : data['phStatus'] == "높음"
+  //                       ? Colors.red
+  //                       : Colors.lightBlue,
+  //                 ),
+  //               ],
+  //             ),
+  //           ],
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
+  //
+  // // 교반통 상태 모달창
+  // void _showAgitatorModal(BuildContext context, Map<String, dynamic> data) {
+  //   showModalBottomSheet(
+  //     context: context,
+  //     backgroundColor: Colors.white,
+  //     shape: const RoundedRectangleBorder(
+  //       borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
+  //     ),
+  //     builder: (context) {
+  //       return Padding(
+  //         padding: const EdgeInsets.all(16.0),
+  //         child: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             // 제목
+  //             Row(
+  //               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //               children: [
+  //                 const Text(
+  //                   "교반통 상태",
+  //                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+  //                 ),
+  //                 IconButton(
+  //                   onPressed: () => Navigator.of(context).pop(),
+  //                   icon: const Icon(Icons.close),
+  //                 ),
+  //               ],
+  //             ),
+  //             const Divider(),
+  //
+  //             // 모달 내용: 온도, 습도 상태
+  //             Column(
+  //               children: [
+  //                 _buildModalRow(
+  //                   "온도",
+  //                   "${data['temperature']}°C",
+  //                   Icons.mood,
+  //                   data['temperatureStatus'],
+  //                   data['temperatureStatus'] == "보통"
+  //                       ? Colors.green
+  //                       : data['temperatureStatus'] == "높음"
+  //                       ? Colors.red
+  //                       : Colors.lightBlue,
+  //                     screenWidth
+  //                 ),
+  //                 const SizedBox(height: 16),
+  //                 _buildModalRow(
+  //                   "습도",
+  //                   "${data['humidity']}%",
+  //                   Icons.warning,
+  //                   data['humidityStatus'],
+  //                   data['humidityStatus'] == "보통"
+  //                       ? Colors.green
+  //                       : data['humidityStatus'] == "높음"
+  //                       ? Colors.red
+  //                       : Colors.lightBlue,
+  //                 ),
+  //                 const SizedBox(height: 16),
+  //                 _buildModalRow(
+  //                   "높이",
+  //                   "${data['volume']}",
+  //                   Icons.mood_bad,
+  //                   data['volumeStatus'],
+  //                   data['volumeStatus'] == "보통"
+  //                       ? Colors.green
+  //                       : data['volumeStatus'] == "높음"
+  //                       ? Colors.red
+  //                       : Colors.lightBlue,
+  //                 ),
+  //               ],
+  //             ),
+  //           ],
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
+  //
+  // // 모달창 행 빌더
+  // Widget _buildModalRow(String label, String value, IconData icon, String status, Color color) {
+  //   return Row(
+  //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //     children: [
+  //       Expanded(
+  //         flex: 3,
+  //         child: Text(
+  //           label,
+  //           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+  //         ),
+  //       ),
+  //       Expanded(
+  //         flex: 2,
+  //         child: Text(
+  //           value,
+  //           style: const TextStyle(fontSize: 16),
+  //           textAlign: TextAlign.center,
+  //         ),
+  //       ),
+  //       Expanded(
+  //         flex: 4,
+  //         child: Row(
+  //           mainAxisAlignment: MainAxisAlignment.center,
+  //           children: [
+  //             Icon(icon, color: color),
+  //             const SizedBox(width: 8),
+  //             Text(
+  //               status,
+  //               style: TextStyle(
+  //                 fontSize: 16,
+  //                 fontWeight: FontWeight.bold,
+  //                 color: color,
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ),
+  //     ],
+  //   );
+  // }
+
+  void _showCultivationModal(BuildContext context, Map<String, dynamic> data) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true, // 화면 비율 제어 활성화
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
       ),
       builder: (context) {
-        return Padding(
+        final double screenHeight = MediaQuery.of(context).size.height;
+        final double screenWidth = MediaQuery.of(context).size.width;
+
+        return Container(
+          height: screenHeight * 0.5, // 화면 높이의 절반
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -296,13 +584,19 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     "배양토 상태",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.05, // 화면 너비 기반으로 동적 크기
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
+                    icon: Icon(
+                      Icons.close,
+                      size: screenWidth * 0.06, // 아이콘 크기 동적 설정
+                    ),
                   ),
                 ],
               ),
@@ -313,38 +607,41 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
                 children: [
                   _buildModalRow(
                     "온도",
-                    "23°C",
+                    "${data['temperature']}°C",
                     Icons.mood,
-                    _temperatureStatus,
-                    _temperatureStatus == "양호"
+                    data['temperatureStatus'],
+                    data['temperatureStatus'] == "보통"
                         ? Colors.green
-                        : _temperatureStatus == "주의"
+                        : data['temperatureStatus'] == "높음"
                         ? Colors.red
-                        : Colors.orange,
+                        : Colors.lightBlue,
+                    screenWidth,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: screenHeight * 0.02), // 동적 높이 간격
                   _buildModalRow(
                     "습도",
-                    "60%",
+                    "${data['humidity']}%",
                     Icons.warning,
-                    _humidityStatus,
-                    _humidityStatus == "양호"
+                    data['humidityStatus'],
+                    data['humidityStatus'] == "보통"
                         ? Colors.green
-                        : _humidityStatus == "주의"
+                        : data['humidityStatus'] == "높음"
                         ? Colors.red
-                        : Colors.orange,
+                        : Colors.lightBlue,
+                    screenWidth,
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: screenHeight * 0.02),
                   _buildModalRow(
                     "pH",
-                    "6.5",
+                    "${data['ph']}",
                     Icons.mood_bad,
-                    _phStatus,
-                    _phStatus == "양호"
+                    data['phStatus'],
+                    data['phStatus'] == "보통"
                         ? Colors.green
-                        : _phStatus == "주의"
+                        : data['phStatus'] == "높음"
                         ? Colors.red
-                        : Colors.orange,
+                        : Colors.lightBlue,
+                    screenWidth,
                   ),
                 ],
               ),
@@ -356,15 +653,20 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
   }
 
   // 교반통 상태 모달창
-  void _showAgitatorModal(BuildContext context) {
+  void _showAgitatorModal(BuildContext context, Map<String, dynamic> data) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true, // 화면 비율 제어 활성화
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
       ),
       builder: (context) {
-        return Padding(
+        final double screenHeight = MediaQuery.of(context).size.height;
+        final double screenWidth = MediaQuery.of(context).size.width;
+
+        return Container(
+          height: screenHeight * 0.5, // 화면 높이의 절반
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -373,13 +675,15 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
+                  Text(
                     "교반통 상태",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: screenWidth * 0.05, // 화면 너비 기반으로 동적 크기
+                      fontWeight: FontWeight.bold),
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
+                    icon: Icon(Icons.close,size: screenWidth * 0.06),
                   ),
                 ],
               ),
@@ -389,19 +693,42 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
               Column(
                 children: [
                   _buildModalRow(
-                    "온도",
-                    "23°C",
-                    Icons.mood,
-                    _agitatorTemperatureStatus,
-                    Colors.green,
+                      "온도",
+                      "${data['temperature']}°C",
+                      Icons.mood,
+                      data['temperatureStatus'],
+                      data['temperatureStatus'] == "보통"
+                          ? Colors.green
+                          : data['temperatureStatus'] == "높음"
+                          ? Colors.red
+                          : Colors.lightBlue,
+                      screenWidth
                   ),
                   const SizedBox(height: 16),
                   _buildModalRow(
                     "습도",
-                    "55%",
-                    Icons.mood,
-                    _agitatorHumidityStatus,
-                    Colors.green,
+                    "${data['humidity']}%",
+                    Icons.warning,
+                    data['humidityStatus'],
+                    data['humidityStatus'] == "보통"
+                        ? Colors.green
+                        : data['humidityStatus'] == "높음"
+                        ? Colors.red
+                        : Colors.lightBlue,
+                      screenWidth
+                  ),
+                  const SizedBox(height: 16),
+                  _buildModalRow(
+                    "높이",
+                    "${data['volume']}",
+                    Icons.mood_bad,
+                    data['volumeStatus'],
+                    data['volumeStatus'] == "보통"
+                        ? Colors.green
+                        : data['volumeStatus'] == "높음"
+                        ? Colors.red
+                        : Colors.lightBlue,
+                      screenWidth
                   ),
                 ],
               ),
@@ -412,8 +739,8 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
     );
   }
 
-  // 모달창 행 빌더
-  Widget _buildModalRow(String label, String value, IconData icon, String status, Color color) {
+
+  Widget _buildModalRow(String label, String value, IconData icon, String status, Color color, double screenWidth) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -421,14 +748,19 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
           flex: 3,
           child: Text(
             label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: screenWidth * 0.04, // 동적 텍스트 크기
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         Expanded(
           flex: 2,
           child: Text(
             value,
-            style: const TextStyle(fontSize: 16),
+            style: TextStyle(
+              fontSize: screenWidth * 0.04,
+            ),
             textAlign: TextAlign.center,
           ),
         ),
@@ -437,12 +769,16 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: color),
-              const SizedBox(width: 8),
+              Icon(
+                icon,
+                color: color,
+                size: screenWidth * 0.05, // 동적 아이콘 크기
+              ),
+              SizedBox(width: screenWidth * 0.02), // 간격 동적 설정
               Text(
                 status,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: screenWidth * 0.04,
                   fontWeight: FontWeight.bold,
                   color: color,
                 ),
@@ -453,4 +789,7 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
       ],
     );
   }
+
+
 }
+

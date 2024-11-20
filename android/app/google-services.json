@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "527077771244",
+    "project_id": "minha-27c6d",
+    "storage_bucket": "minha-27c6d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:527077771244:android:0c6c6a4d32cae1aec4a2c9",
+        "android_client_info": {
+          "package_name": "com.example.five_minha_dx_project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANlmxODn8idxLiqlRMoVUk7-ECm8PI5NU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

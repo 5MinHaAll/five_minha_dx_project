@@ -1,7 +1,9 @@
-import 'package:dx_food_project/second_page.dart';
+import 'package:five_minha_dx_project/second_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+
+import 'testFirebaseDB.dart';
 import 'main.dart';
 
 class LoginPage extends StatefulWidget {
@@ -83,6 +85,22 @@ class _LoginPageState extends State<LoginPage> {
                           builder: (_) =>
                               SecondPage(
                                   title: 'Flutter Demo Home Page', userId: userIdController.text,)),
+                    );
+                  else
+                    showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(content: Text(
+                              "아이디가 존재하지 않거나 비밀번호가 일치하지 않습니다."),);
+                        }
+                    );
+                  if (userIdController.text == "1234" &&
+                      passwordController.text == "1234")
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              ForDB(
+                                title: 'Flutter Demo Home Page', userId: userIdController.text,)),
                     );
                   else
                     showDialog(
