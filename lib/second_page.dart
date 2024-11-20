@@ -139,7 +139,7 @@ class _SecondPageState extends State<SecondPage> {
               onTap: onIconTap, // 아이콘 클릭 시 호출
               child: Icon(icon, size: 40, color: Colors.teal),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               title,
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),

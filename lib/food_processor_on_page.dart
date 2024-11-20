@@ -14,7 +14,7 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
 
   // 배양토 상태 초기값
   String _temperatureStatus = "양호";
-  String _humidityStatus = "주의";
+  String _humidityStatus = "보통";
   String _phStatus = "보통";
 
   // 교반통 상태 초기값 (고정)
@@ -32,14 +32,15 @@ class _FoodProcessorOnPageState extends State<FoodProcessorOnPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          "미생물 음식물 처리기",
+          "음식물 처리기",
           style: TextStyle(color: Colors.black),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: Color(0xFFFEF7FF),
         elevation: 1,
         iconTheme: const IconThemeData(color: Colors.black),
       ),
-      body: _selectedIndex == 0 ? _buildMainContent() : const UsefulFeaturesPage(),
+      backgroundColor: Color(0xFFFFFFFF), // 상단바 배경색
+      body: _selectedIndex == 0 ? _buildMainContent() : UsefulFeaturesPage(),
       bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }

@@ -1,4 +1,4 @@
-name: five_minha_dx_project
+name: dx_food_project
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -40,6 +40,7 @@ dependencies:
   tflite_flutter: ^0.11.0
   image: ^3.0.1
   path_provider: ^2.0.14
+  camera: ^0.10.0
 
 dev_dependencies:
   flutter_test:

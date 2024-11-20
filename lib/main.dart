@@ -17,6 +17,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const LoginPage(), // 최초 페이지를 LoginPage로 설정
+      debugShowCheckedModeBanner: false, // 디버그 배너 제거
     );
   }
 }
